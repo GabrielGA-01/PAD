@@ -6,7 +6,7 @@
 #include <thread>
 
 int main() {
-    int largura = 4096, altura = 4096;
+    int largura = 16384, altura = 16384;
 
     // 1. Alocação de matrizes em ponto flutuante (CV_32F = float)
     cv::Mat imagem_in(altura, largura, CV_32F);
@@ -21,30 +21,24 @@ int main() {
     );
 
     // 3. Processamento com a biblioteca otimizada (Medição simples original)
-    auto inicio = std::chrono::high_resolution_clock::now();
-    cv::filter2D(imagem_in, imagem_out, -1, mascara);
-    auto fim = std::chrono::high_resolution_clock::now();
-
-    std::chrono::duration<double> tempo = fim - inicio;
-    std::cout << "Tempo OpenCV (único): " << tempo.count() << " segundos.\n";
-
-    // Adicionado - Inicio
+    
     // Pausa inicial de 5 segundos para isolar o consumo base no log do HWiNFO
     std::cout << "A preparar... (Inicia em 5 segundos)\n";
     std::this_thread::sleep_for(std::chrono::seconds(5));
-
+    
     // Captura o timestamp exato do início do teste (sincronizado com o relógio do sistema/HWiNFO)
     auto inicio_sys = std::chrono::system_clock::now();
     auto tempo_inicio_t = std::chrono::system_clock::to_time_t(inicio_sys);
     auto ms_inicio = std::chrono::duration_cast<std::chrono::milliseconds>(
                         inicio_sys.time_since_epoch()) % 1000;
 
-    // Loop de repetição para estender o tempo do teste e garantir captura correta no HWiNFO
-    int repeticoes = 1000;
-    for (int i = 0; i < repeticoes; ++i) {
-        cv::filter2D(imagem_in, imagem_out, -1, mascara);
-    }
+    auto inicio = std::chrono::high_resolution_clock::now();
+    cv::filter2D(imagem_in, imagem_out, -1, mascara);
+    auto fim = std::chrono::high_resolution_clock::now();
 
+    std::chrono::duration<double> tempo = fim - inicio;
+    std::cout << "Tempo OpenCV (único): " << tempo.count() << " segundos.\n";
+    
     // Captura o timestamp exato do fim do teste
     auto fim_sys = std::chrono::system_clock::now();
     auto tempo_fim_t = std::chrono::system_clock::to_time_t(fim_sys);
