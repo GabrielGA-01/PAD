@@ -1,0 +1,20 @@
+# started on Mon Oct 26 00:22:25 2026
+
+
+ Performance counter stats for './objects/1B_conv_colunas 8096':
+
+       40414700958      cycles:u                                                                (62.64%)
+       42013052062      instructions:u                                                          (74.99%)
+       15343230397      l1-dcache-loads:u                                                       (74.94%)
+         464476654      l1-dcache-load-misses:u                                                 (74.91%)
+         293130679      l2_rqsts.all_demand_data_rd:u                                           (74.93%)
+         188500384      l2_rqsts.all_demand_miss:u                                              (74.99%)
+          54923706      mem_load_retired.l3_hit:u                                               (50.14%)
+          15494951      mem_load_retired.l3_miss:u                                              (50.15%)
+
+      13.970905664 seconds time elapsed
+
+      12.822468000 seconds user
+       0.605249000 seconds sys
+
+
