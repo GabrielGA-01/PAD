@@ -12,7 +12,8 @@ TIMEZONE_OFFSET_HOURS = -3
 
 print("Carregando 'energia.CSV'...")
 try:
-    df_energia = pd.read_csv("energia.CSV", encoding='latin1')
+    # low_memory=False evita o DtypeWarning devido às centenas de colunas do HWiNFO64
+    df_energia = pd.read_csv("energia.CSV", encoding='latin1', low_memory=False)
 except FileNotFoundError:
     print("Erro: O arquivo 'energia.CSV' não foi encontrado na pasta atual.")
     exit()
@@ -25,24 +26,26 @@ df_energia['CPU Package Power [W]'] = pd.to_numeric(df_energia['CPU Package Powe
 df_energia = df_energia.dropna(subset=['CPU Package Power [W]'])
 
 # Combina Data e Hora do HWiNFO
-df_energia['Timestamp'] = pd.to_datetime(
+timestamp_series = pd.to_datetime(
     df_energia['Date'].astype(str).str.strip() + ' ' + df_energia['Time'].astype(str).str.strip(), 
     format='mixed', 
     dayfirst=True, 
     errors='coerce'
 )
+
+df_energia['Timestamp'] = timestamp_series
 df_energia = df_energia.dropna(subset=['Timestamp'])
+
+# DESFRAGMENTAÇÃO DE MEMÓRIA (Elimina o PerformanceWarning do Pandas)
+df_energia = df_energia.copy()
 
 def calcular_energia_intervalo(t_ini, t_fim, nome_cenario):
     """Calcula energia total (J) e potência média (W) aplicando o ajuste de fuso horário."""
-    # Converte o epoch do C++ e aplica o offset de fuso horário para alinhar com o HWiNFO
     t_ini_dt = pd.to_datetime(t_ini, unit='s') + pd.Timedelta(hours=TIMEZONE_OFFSET_HOURS)
     t_fim_dt = pd.to_datetime(t_fim, unit='s') + pd.Timedelta(hours=TIMEZONE_OFFSET_HOURS)
     
-    # Filtra o dataframe de energia dentro da janela ajustada
     df_filtrado = df_energia[(df_energia['Timestamp'] >= t_ini_dt) & (df_energia['Timestamp'] <= t_fim_dt)]
     
-    # Se cair numa lacuna de amostragem exata, aplica tolerância de 2 segundos
     if df_filtrado.empty:
         t_ini_tol = t_ini_dt - pd.Timedelta(seconds=2)
         t_fim_tol = t_fim_dt + pd.Timedelta(seconds=2)
@@ -128,7 +131,7 @@ for csv_path in csv_files:
             
         with open(rel_nome, "w", encoding="utf-8") as rel:
             rel.write("==================================================\n")
-            rel.write(f"        RELATÓRIO DE DESEMPENHO E ENERGIA         \n")
+            rel.write("        RELATÓRIO DE DESEMPENHO E ENERGIA         \n")
             rel.write("==================================================\n")
             rel.write(f"{cenario_str}\n\n")
             rel.write("--- 1. DESEMPENHO TEMPORAL E COMPUTACIONAL ---\n")
@@ -136,7 +139,7 @@ for csv_path in csv_files:
             rel.write(f"Desempenho Computacional: {mflops:.2f} MFLOPS\n")
             rel.write(f"CPI (Cycles Per Instruction): {cpi:.4f}\n\n")
             rel.write("--- 2. HARDWARE E HIERARQUIA DE CACHE (perf) ---\n")
-            rel.write(f5 := f"Ciclos de CPU (Cycles): {perf_data['cycles']}\n")
+            rel.write(f"Ciclos de CPU (Cycles): {perf_data['cycles']}\n")
             rel.write(f"Instruções Executadas (Instructions): {perf_data['instructions']}\n")
             rel.write(f"L1 Data Cache Misses: {perf_data['l1_misses']}\n")
             rel.write(f"L2 Cache Misses: {perf_data['l2_misses']}\n")

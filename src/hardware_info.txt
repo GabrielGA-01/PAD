@@ -1,7 +1,7 @@
 ==================================================
         RELATÓRIO DE HARDWARE DO SISTEMA          
 ==================================================
-Data da coleta: Mon Oct 26 13:54:40 -03 2026
+Data da coleta: Mon Oct 26 14:06:16 -03 2026
 
 --------------------------------------------------
 1. MODELO DA CPU
@@ -15,7 +15,7 @@ NUMA node0 CPU(s):                       0-7
 2. MEMÓRIA RAM (INTERNA)
 --------------------------------------------------
                total        used        free      shared  buff/cache   available
-Mem:           7.8Gi       2.6Gi       3.2Gi       5.9Mi       2.2Gi       5.2Gi
+Mem:           7.8Gi       2.5Gi       4.6Gi       9.0Mi       809Mi       5.3Gi
 Swap:          8.0Gi          0B       8.0Gi
 
 --------------------------------------------------

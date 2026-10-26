@@ -22,10 +22,16 @@ int main(int argc, char** argv) {
         size_t bytes = ((size_t)N * N * sizeof(float) + 63) / 64 * 64;
         float* in  = (float*)aligned_alloc(64, bytes);
         float* out = (float*)aligned_alloc(64, bytes);
-        
-        mt19937 gen(42);
-        uniform_real_distribution<float> dis(0.0f, 255.0f);
-        for (size_t k = 0; k < (size_t)N * N; k++) in[k] = dis(gen);
+
+        // Lê a matriz pré-gerada pelo script .sh
+        string filename = "matriz_in_N" + to_string(N) + ".bin";
+        ifstream file(filename, ios::binary);
+        if (!file.is_open()) {
+            cerr << "Erro: Arquivo " << filename << " não encontrado!" << endl;
+            return 1;
+        }
+        file.read(reinterpret_cast<char*>(in), (size_t)N * N * sizeof(float));
+        file.close();
 
         this_thread::sleep_for(chrono::seconds(1));
 

@@ -1,0 +1,20 @@
+# started on Mon Oct 26 15:04:21 2026
+
+
+ Performance counter stats for './objects/3A_conv_blocos 24576 64':
+
+       18416382664      cycles:u                                                                (62.80%)
+       25280929068      instructions:u                                                          (75.28%)
+       13839351304      l1-dcache-loads:u                                                       (74.89%)
+         385592202      l1-dcache-load-misses:u                                                 (74.77%)
+          78873418      l2_rqsts.all_demand_data_rd:u                                           (75.05%)
+          62031457      l2_rqsts.all_demand_miss:u                                              (75.13%)
+          10944877      mem_load_retired.l3_hit:u                                               (50.08%)
+           3594752      mem_load_retired.l3_miss:u                                              (50.16%)
+
+      11.263080424 seconds time elapsed
+
+       6.250246000 seconds user
+       5.260188000 seconds sys
+
+

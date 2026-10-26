@@ -1,5 +1,8 @@
 #include "common.h"
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+__attribute__((optimize("O0", "no-tree-vectorize")))
 NOVEC void conv_blocos(const float* in, float* out, int N, const float* m, int BLOCK_SIZE) {
     for (int bi = 1; bi < N - 1; bi += BLOCK_SIZE) {
         for (int bj = 1; bj < N - 1; bj += BLOCK_SIZE) {
@@ -15,6 +18,7 @@ NOVEC void conv_blocos(const float* in, float* out, int N, const float* m, int B
     }
     bordas(in, out, N, m);
 }
+#pragma GCC pop_options
 
 int main(int argc, char** argv) {
     // Recebe N e B via argumento (com fallbacks se executado manualmente)
@@ -35,10 +39,16 @@ int main(int argc, char** argv) {
     size_t bytes = ((size_t)N * N * sizeof(float) + 63) / 64 * 64;
     float* in  = (float*)aligned_alloc(64, bytes);
     float* out = (float*)aligned_alloc(64, bytes);
-    
-    mt19937 gen(42);
-    uniform_real_distribution<float> dis(0.0f, 255.0f);
-    for (size_t k = 0; k < (size_t)N * N; k++) in[k] = dis(gen);
+
+    // Lê a matriz pré-gerada pelo script .sh
+    string filename = "matriz_in_N" + to_string(N) + ".bin";
+    ifstream file(filename, ios::binary);
+    if (!file.is_open()) {
+        cerr << "Erro: Arquivo " << filename << " não encontrado!" << endl;
+        return 1;
+    }
+    file.read(reinterpret_cast<char*>(in), (size_t)N * N * sizeof(float));
+    file.close();
 
     this_thread::sleep_for(chrono::seconds(1));
     
