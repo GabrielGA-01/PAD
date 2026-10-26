@@ -1,0 +1,36 @@
+==================================================
+        RELATÓRIO DE HARDWARE DO SISTEMA          
+==================================================
+Data da coleta: Mon Oct 26 13:54:40 -03 2026
+
+--------------------------------------------------
+1. MODELO DA CPU
+--------------------------------------------------
+Model name:                              Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz
+Architecture:                            x86_64
+CPU(s):                                  8
+NUMA node0 CPU(s):                       0-7
+
+--------------------------------------------------
+2. MEMÓRIA RAM (INTERNA)
+--------------------------------------------------
+               total        used        free      shared  buff/cache   available
+Mem:           7.8Gi       2.6Gi       3.2Gi       5.9Mi       2.2Gi       5.2Gi
+Swap:          8.0Gi          0B       8.0Gi
+
+--------------------------------------------------
+3. SUPORTE A INSTRUÇÕES VETORIAIS (AVX / AVX2 / AVX-512)
+--------------------------------------------------
+[✔] AVX: Suportado
+[✔] AVX2: Suportado
+[✔] AVX-512 (Foundation): Suportado
+
+--- Lista completa de flags vetoriais encontradas ---
+avx avx2 avx512bw avx512cd avx512dq avx512f avx512vl sse4_1 sse4_2 
+
+--------------------------------------------------
+4. FERRAMENTA DE MEDIÇÃO DE ENERGIA E HARDWARE
+--------------------------------------------------
+Ferramenta utilizada: HWiNFO64
+
+==================================================
