@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # Configurações de tamanhos massivos e blocos
-TAMANHOS=(26500 24576 23552)
+# TAMANHOS=(26500 24576 23552)
+TAMANHOS=(1000 2000 3000)
+
 BLOCOS=(8 16 32 64)
 
 echo "=================================================="
 echo "Removendo pastas de resultados e binários antigos..."
 echo "=================================================="
-rm -rf objects perfs csv_time *.bin
+rm -rf objects perfs csv_time relatorios_metricas *.bin
 
 echo "=================================================="
 echo "Criando novas pastas de diretórios..."
@@ -15,6 +17,7 @@ echo "=================================================="
 mkdir -p objects
 mkdir -p perfs
 mkdir -p csv_time
+mkdir -p relatorios_metrica
 
 echo "=================================================="
 echo "Compilando Utilitário de Geração de Matrizes..."
