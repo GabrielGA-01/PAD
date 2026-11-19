@@ -19,12 +19,13 @@ VEC void conv_simd(const float* __restrict in_, float* __restrict out_, int N, c
 }
 
 int main(int argc, char** argv) {
+    int iteracao = iteracao_atual();
     vector<int> tams;
     for (int a = 1; a < argc; a++) tams.push_back(atoi(argv[a]));
     if (tams.empty()) tams = {1024, 2048, 4096};
 
     // Abre o arquivo CSV único fora do loop para armazenar todos os tamanhos
-    string caminho_csv = "csv_time/2_conv_simd.csv";
+    string caminho_csv = nome_arquivo_csv("2_conv_simd", iteracao);
 
     // Verifica se o arquivo já existe e tem tamanho > 0
     ifstream checar_arquivo(caminho_csv);
@@ -36,7 +37,7 @@ int main(int argc, char** argv) {
 
     // Escreve o cabeçalho SOMENTE se o arquivo for novo/vazio
     if (!arquivo_existe) {
-        log << "N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
+        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
     }
 
     for (int N : tams) {
@@ -55,7 +56,7 @@ int main(int argc, char** argv) {
         file.close();
 
         this_thread::sleep_for(chrono::seconds(2));
-        testar("simd", conv_simd, in, out, N, log);
+        testar("simd", conv_simd, in, out, N, iteracao, log);
         
         free(in); free(out);
     }

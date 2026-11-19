@@ -74,18 +74,6 @@ VEC void conv_blocos_vec(const Bloco* blocos, size_t nb,
     bordas(in_, out_, N, m_);
 }
 
-// ---- Remontagem da saída global ----
-void montar_saida(const std::vector<Bloco>& blocos, float* out, int N) {
-    for (size_t k = 0; k < blocos.size(); k++) {
-        const Bloco& b = blocos[k];
-        for (int li = 0; li < b.h; li++) {
-            memcpy(out + (size_t)(b.bi + li) * N + b.bj,
-                   b.sai + (size_t)li * b.w,
-                   (size_t)b.w * sizeof(float));
-        }
-    }
-}
-
 void liberar_blocos(std::vector<Bloco>& blocos) {
     for (size_t k = 0; k < blocos.size(); k++) {
         free(blocos[k].ent);
@@ -95,10 +83,11 @@ void liberar_blocos(std::vector<Bloco>& blocos) {
 }
 
 int main(int argc, char** argv) {
+    int iteracao = iteracao_atual();
     int N = (argc > 1) ? atoi(argv[1]) : 1024;
     int B = (argc > 2) ? atoi(argv[2]) : 64;
 
-    string caminho_csv = "csv_time/3B_conv_blocos.csv";
+    string caminho_csv = nome_arquivo_csv("3B_conv_blocos", iteracao);
 
     ifstream checar_arquivo(caminho_csv);
     bool arquivo_existe = checar_arquivo.is_open() && checar_arquivo.peek() != ifstream::traits_type::eof();
@@ -106,7 +95,7 @@ int main(int argc, char** argv) {
 
     ofstream log(caminho_csv, ios::app);
     if (!arquivo_existe) {
-        log << "N;bloco;t0_epoch;t1_epoch;t2_epoch;t3_epoch;"
+        log << "iteracao;N;bloco;t0_epoch;t1_epoch;t2_epoch;t3_epoch;"
                "tempo_divisao_s;tempo_stencil_s;tempo_juncao_s;tempo_total_s;"
                "maxdiff_vs_opencv\n";
     }
@@ -135,7 +124,7 @@ int main(int argc, char** argv) {
     conv_blocos_vec(blocos.data(), blocos.size(), in, out, N, MASCARA);
 
     double t2 = agora();                                   // 3) antes da junção em uma só
-    montar_saida(blocos, out, N);
+    montar_saida_blocos(blocos, out, N);
 
     double t3 = agora();                                   // 4) ao final
 
@@ -155,7 +144,7 @@ int main(int argc, char** argv) {
            B, N, t_divisao, t_stencil, t_juncao, t_total, dif);
 
     log.precision(6); log << fixed;
-    log << N << ";" << B << ";"
+    log << iteracao << ";" << N << ";" << B << ";"
         << t0 << ";" << t1 << ";" << t2 << ";" << t3 << ";"
         << t_divisao << ";" << t_stencil << ";" << t_juncao << ";" << t_total << ";"
         << dif << "\n";

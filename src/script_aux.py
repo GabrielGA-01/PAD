@@ -1,5 +1,7 @@
 import os
 import glob
+import re
+import shutil
 import pandas as pd
 import numpy as np
 
@@ -98,17 +100,30 @@ if not csv_files:
     print("Nenhum arquivo CSV encontrado na pasta 'csv_time/'.")
     exit()
 
-os.makedirs("relatorios_metricas", exist_ok=True)
+if os.path.exists("relatorios_metricas"):
+    shutil.rmtree("relatorios_metricas")
+os.makedirs("relatorios_metricas")
 print("\nProcessando cenários com correção de fuso horário...")
 
+resultados = {}
+
 for csv_path in csv_files:
-    nome_algoritmo = os.path.splitext(os.path.basename(csv_path))[0]
+    nome_arquivo = os.path.splitext(os.path.basename(csv_path))[0]
+    correspondencia_iteracao = re.fullmatch(r"(.*)_I(\d+)", nome_arquivo)
+    if correspondencia_iteracao:
+        nome_algoritmo = correspondencia_iteracao.group(1)
+        iteracao_arquivo = int(correspondencia_iteracao.group(2))
+    else:
+        nome_algoritmo = nome_arquivo
+        iteracao_arquivo = 1
+
     df_tempo = pd.read_csv(csv_path, sep=';')
 
     # Formato novo (3A/3B): t0..t3 + tempos por fase. Formato antigo: inicio/fim/tempo_s.
     formato_novo = 'tempo_stencil_s' in df_tempo.columns
 
-    for index, row in df_tempo.iterrows():
+    for _, row in df_tempo.iterrows():
+        iteracao = int(row['iteracao']) if 'iteracao' in df_tempo.columns and pd.notna(row['iteracao']) else iteracao_arquivo
         N = int(row['N'])
         bloco = int(row['bloco']) if 'bloco' in df_tempo.columns else None
 
@@ -128,8 +143,10 @@ for csv_path in csv_files:
             t_fim_ref = float(row['fim_epoch'])
             tempo_s = float(row['tempo_s'])
 
-        perf_filename = f"{nome_algoritmo}_N{N}_B{bloco}.txt" if bloco is not None else f"{nome_algoritmo}_N{N}.txt"
-        perf_path = os.path.join("perfs", perf_filename)
+        perf_base = f"{nome_algoritmo}_N{N}_B{bloco}" if bloco is not None else f"{nome_algoritmo}_N{N}"
+        perf_path_iteracao = os.path.join("perfs", f"{perf_base}_I{iteracao}.txt")
+        perf_path_legado = os.path.join("perfs", f"{perf_base}.txt")
+        perf_path = perf_path_iteracao if os.path.exists(perf_path_iteracao) else perf_path_legado
         perf_data = extrair_perf_stats(perf_path)
 
         total_pixels = (N - 2) * (N - 2)
@@ -144,6 +161,21 @@ for csv_path in csv_files:
         mflops_por_watt = seguro_div(mflops, potencia_media)
         mflops_por_joule = seguro_div(mflops, energia_total)
 
+        metricas = {
+            'tempo_s': tempo_s,
+            'mflops': mflops,
+            'cpi': cpi,
+            'cycles': perf_data['cycles'],
+            'instructions': perf_data['instructions'],
+            'l1_misses': perf_data['l1_misses'],
+            'l2_misses': perf_data['l2_misses'],
+            'l3_misses': perf_data['l3_misses'],
+            'potencia_media': potencia_media,
+            'energia_total': energia_total,
+            'mflops_por_watt': mflops_por_watt,
+            'mflops_por_joule': mflops_por_joule,
+        }
+
         if formato_novo:
             # Energia das demais fases e do total (divisão + stencil + junção)
             pot_div, en_div = calcular_energia_intervalo(t0, t1, cenario_nome + " [divisão]")
@@ -153,54 +185,81 @@ for csv_path in csv_files:
             mflops_por_watt_tot = seguro_div(mflops_total, pot_tot)
             mflops_por_joule_tot = seguro_div(mflops_total, en_tot)
 
-        rel_nome = f"relatorios_metricas/{nome_algoritmo}_N{N}_B{bloco}.txt" if bloco is not None else f"relatorios_metricas/{nome_algoritmo}_N{N}.txt"
-        cenario_str = f"Algoritmo: {nome_algoritmo} | N = {N}" + (f" | Bloco = {bloco}" if bloco is not None else "")
+            metricas.update({
+                'tempo_divisao': tempo_divisao,
+                'tempo_stencil': tempo_stencil,
+                'tempo_juncao': tempo_juncao,
+                'tempo_total': tempo_total,
+                'mflops_total': mflops_total,
+                'pot_divisao': pot_div,
+                'energia_divisao': en_div,
+                'pot_juncao': pot_jun,
+                'energia_juncao': en_jun,
+                'pot_total': pot_tot,
+                'energia_total_fases': en_tot,
+                'mflops_por_watt_total': mflops_por_watt_tot,
+                'mflops_por_joule_total': mflops_por_joule_tot,
+            })
 
-        with open(rel_nome, "w", encoding="utf-8") as rel:
-            rel.write("==================================================\n")
-            rel.write("        RELATÓRIO DE DESEMPENHO E ENERGIA         \n")
-            rel.write("==================================================\n")
-            rel.write(f"{cenario_str}\n\n")
+        chave = (nome_algoritmo, N, bloco)
+        resultados.setdefault(chave, []).append(metricas)
 
-            rel.write("--- 1. DESEMPENHO TEMPORAL E COMPUTACIONAL ---\n")
-            if formato_novo:
-                rel.write(f"Tempo da Divisão em Blocos: {tempo_divisao:.6f} s\n")
-                rel.write(f"Tempo da Aplicação do Stencil: {tempo_stencil:.6f} s\n")
-                rel.write(f"Tempo da Junção da Matriz: {tempo_juncao:.6f} s\n")
-                rel.write(f"Tempo Total (Wall-Clock): {tempo_total:.6f} s\n")
-                rel.write(f"Desempenho Computacional (só stencil): {mflops:.2f} MFLOPS\n")
-                rel.write(f"Desempenho Computacional (total): {mflops_total:.2f} MFLOPS\n")
-            else:
-                rel.write(f"Tempo de Execução (Wall-Clock): {tempo_s:.6f} s\n")
-                rel.write(f"Desempenho Computacional: {mflops:.2f} MFLOPS\n")
-            rel.write(f"CPI (Cycles Per Instruction): {cpi:.4f}\n\n")
+for (nome_algoritmo, N, bloco), execucoes in resultados.items():
+    metricas = {
+        nome: float(np.mean([execucao[nome] for execucao in execucoes]))
+        for nome in execucoes[0]
+    }
+    formato_novo = 'tempo_total' in metricas
 
-            rel.write("--- 2. HARDWARE E HIERARQUIA DE CACHE (perf) ---\n")
-            rel.write(f"Ciclos de CPU (Cycles): {perf_data['cycles']}\n")
-            rel.write(f"Instruções Executadas (Instructions): {perf_data['instructions']}\n")
-            rel.write(f"L1 Data Cache Misses: {perf_data['l1_misses']}\n")
-            rel.write(f"L2 Cache Misses: {perf_data['l2_misses']}\n")
-            rel.write(f"L3 Cache Misses: {perf_data['l3_misses']}\n\n")
+    rel_nome = f"relatorios_metricas/{nome_algoritmo}_N{N}_B{bloco}.txt" if bloco is not None else f"relatorios_metricas/{nome_algoritmo}_N{N}.txt"
+    cenario_str = f"Algoritmo: {nome_algoritmo} | N = {N}" + (f" | Bloco = {bloco}" if bloco is not None else "")
 
-            rel.write("--- 3. CONSUMO DE ENERGIA (HWiNFO64) ---\n")
-            if formato_novo:
-                rel.write(f"[Stencil]  Potência Média: {potencia_media:.2f} W | Energia: {energia_total:.4f} J\n")
-                rel.write(f"[Divisão]  Potência Média: {pot_div:.2f} W | Energia: {en_div:.4f} J\n")
-                rel.write(f"[Junção]   Potência Média: {pot_jun:.2f} W | Energia: {en_jun:.4f} J\n")
-                rel.write(f"[Total]    Potência Média: {pot_tot:.2f} W | Energia: {en_tot:.4f} J\n\n")
-            else:
-                rel.write(f"Potência Média Consumida: {potencia_media:.2f} W\n")
-                rel.write(f"Energia Total Consumida (CPU Package): {energia_total:.4f} Joules\n\n")
+    with open(rel_nome, "w", encoding="utf-8") as rel:
+        rel.write("==================================================\n")
+        rel.write("        RELATÓRIO DE DESEMPENHO E ENERGIA         \n")
+        rel.write("==================================================\n")
+        rel.write(f"{cenario_str}\n")
+        rel.write(f"Execuções consideradas na média: {len(execucoes)}\n\n")
 
-            rel.write("--- 4. EFICIÊNCIA ENERGÉTICA ---\n")
-            if formato_novo:
-                rel.write(f"Stencil - MFLOPS/Watt: {mflops_por_watt:.4f}\n")
-                rel.write(f"Stencil - MFLOPS/Joule: {mflops_por_joule:.4f}\n")
-                rel.write(f"Total   - MFLOPS/Watt: {mflops_por_watt_tot:.4f}\n")
-                rel.write(f"Total   - MFLOPS/Joule: {mflops_por_joule_tot:.4f}\n")
-            else:
-                rel.write(f"Eficiência por Potência (MFLOPS/Watt): {mflops_por_watt:.4f}\n")
-                rel.write(f"Eficiência por Energia (MFLOPS/Joule): {mflops_por_joule:.4f}\n")
-            rel.write("==================================================\n")
+        rel.write("--- 1. DESEMPENHO TEMPORAL E COMPUTACIONAL ---\n")
+        if formato_novo:
+            rel.write(f"Tempo da Divisão em Blocos: {metricas['tempo_divisao']:.6f} s\n")
+            rel.write(f"Tempo da Aplicação do Stencil: {metricas['tempo_stencil']:.6f} s\n")
+            rel.write(f"Tempo da Junção da Matriz: {metricas['tempo_juncao']:.6f} s\n")
+            rel.write(f"Tempo Total (Wall-Clock): {metricas['tempo_total']:.6f} s\n")
+            rel.write(f"Desempenho Computacional (só stencil): {metricas['mflops']:.2f} MFLOPS\n")
+            rel.write(f"Desempenho Computacional (total): {metricas['mflops_total']:.2f} MFLOPS\n")
+        else:
+            rel.write(f"Tempo de Execução (Wall-Clock): {metricas['tempo_s']:.6f} s\n")
+            rel.write(f"Desempenho Computacional: {metricas['mflops']:.2f} MFLOPS\n")
+        rel.write(f"CPI (Cycles Per Instruction): {metricas['cpi']:.4f}\n\n")
+
+        rel.write("--- 2. HARDWARE E HIERARQUIA DE CACHE (perf) ---\n")
+        rel.write(f"Ciclos de CPU (Cycles): {metricas['cycles']:.2f}\n")
+        rel.write(f"Instruções Executadas (Instructions): {metricas['instructions']:.2f}\n")
+        rel.write(f"L1 Data Cache Misses: {metricas['l1_misses']:.2f}\n")
+        rel.write(f"L2 Cache Misses: {metricas['l2_misses']:.2f}\n")
+        rel.write(f"L3 Cache Misses: {metricas['l3_misses']:.2f}\n\n")
+
+        rel.write("--- 3. CONSUMO DE ENERGIA (HWiNFO64) ---\n")
+        if formato_novo:
+            rel.write(f"[Stencil]  Potência Média: {metricas['potencia_media']:.2f} W | Energia: {metricas['energia_total']:.4f} J\n")
+            rel.write(f"[Divisão]  Potência Média: {metricas['pot_divisao']:.2f} W | Energia: {metricas['energia_divisao']:.4f} J\n")
+            rel.write(f"[Junção]   Potência Média: {metricas['pot_juncao']:.2f} W | Energia: {metricas['energia_juncao']:.4f} J\n")
+            rel.write(f"[Total]    Potência Média: {metricas['pot_total']:.2f} W | Energia: {metricas['energia_total_fases']:.4f} J\n\n")
+        else:
+            rel.write(f"Potência Média Consumida: {metricas['potencia_media']:.2f} W\n")
+            rel.write(f"Energia Total Consumida (CPU Package): {metricas['energia_total']:.4f} Joules\n\n")
+
+        rel.write("--- 4. EFICIÊNCIA ENERGÉTICA ---\n")
+        if formato_novo:
+            rel.write(f"Stencil - MFLOPS/Watt: {metricas['mflops_por_watt']:.4f}\n")
+            rel.write(f"Stencil - MFLOPS/Joule: {metricas['mflops_por_joule']:.4f}\n")
+            rel.write(f"Total   - MFLOPS/Watt: {metricas['mflops_por_watt_total']:.4f}\n")
+            rel.write(f"Total   - MFLOPS/Joule: {metricas['mflops_por_joule_total']:.4f}\n")
+        else:
+            rel.write(f"Eficiência por Potência (MFLOPS/Watt): {metricas['mflops_por_watt']:.4f}\n")
+            rel.write(f"Eficiência por Energia (MFLOPS/Joule): {metricas['mflops_por_joule']:.4f}\n")
+        rel.write("==================================================\n")
 
 print("\nProcessamento concluído! Verifique a pasta 'relatorios_metricas/'.")

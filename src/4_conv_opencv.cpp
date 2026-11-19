@@ -1,11 +1,12 @@
 #include "common.h"
 
 int main(int argc, char** argv) {
+    int iteracao = iteracao_atual();
     vector<int> tams;
     for (int a = 1; a < argc; a++) tams.push_back(atoi(argv[a]));
     if (tams.empty()) tams = {1024, 2048, 4096};
 
-    string caminho_csv = "csv_time/4_conv_opencv.csv";
+    string caminho_csv = nome_arquivo_csv("4_conv_opencv", iteracao);
 
     // Verifica se o arquivo CSV já existe e tem conteúdo
     ifstream checar_arquivo(caminho_csv);
@@ -15,7 +16,7 @@ int main(int argc, char** argv) {
     // Abre em modo append para acumular os resultados
     ofstream log(caminho_csv, ios::app);
     if (!arquivo_existe) {
-        log << "N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
+        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
     }
 
     for (int N : tams) {
@@ -49,7 +50,7 @@ int main(int argc, char** argv) {
 
         printf("opencv N=%-5d tempo=%.6f s  maxdiff_vs_opencv=%g\n", N, t, dif);
         log.precision(6); log << fixed;
-        log << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif << "\n";
+        log << iteracao << ";" << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif << "\n";
 
         free(in); free(out);
     }

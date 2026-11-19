@@ -1,0 +1,20 @@
+# started on Thu Nov 19 18:20:02 2026
+
+
+ Performance counter stats for './objects/3A_conv_blocos 3000 32':
+
+        2558138755      cycles:u                                                                (65.10%)
+        1228013784      instructions:u                                                          (75.22%)
+         330178956      l1-dcache-loads:u                                                       (73.77%)
+           8732154      l1-dcache-load-misses:u                                                 (73.40%)
+           1906188      l2_rqsts.all_demand_data_rd:u                                           (73.99%)
+           1130678      l2_rqsts.all_demand_miss:u                                              (75.40%)
+             92187      mem_load_retired.l3_hit:u                                               (52.27%)
+            221631      mem_load_retired.l3_miss:u                                              (52.01%)
+
+       1.568721460 seconds time elapsed
+
+       1.629406000 seconds user
+       0.516511000 seconds sys
+
+

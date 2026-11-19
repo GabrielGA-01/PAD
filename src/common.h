@@ -11,6 +11,8 @@
 #include <thread>
 #include <random>
 #include <string>
+#include <climits>
+#include <cstring>
 
 // Cabeçalhos do OpenCV
 #include <opencv2/opencv.hpp>
@@ -52,6 +54,18 @@ static void bordas(const float* in, float* out, int N, const float* m) {
     }
 }
 
+template <typename TipoBloco>
+static void montar_saida_blocos(const vector<TipoBloco>& blocos, float* out, int N) {
+    for (size_t k = 0; k < blocos.size(); k++) {
+        const TipoBloco& b = blocos[k];
+        for (int li = 0; li < b.h; li++) {
+            memcpy(out + (size_t)(b.bi + li) * N + b.bj,
+                   &b.sai[(size_t)li * b.w],
+                   (size_t)b.w * sizeof(float));
+        }
+    }
+}
+
 #define STENCIL(in, N, i, j, m)                                             \
     (m[0]*in[(size_t)((i)-1)*N+(j)-1] + m[1]*in[(size_t)((i)-1)*N+(j)] + m[2]*in[(size_t)((i)-1)*N+(j)+1] + \
      m[3]*in[(size_t)(i)*N+(j)-1]     + m[4]*in[(size_t)(i)*N+(j)]     + m[5]*in[(size_t)(i)*N+(j)+1] +     \
@@ -61,11 +75,28 @@ using Func = void (*)(const float*, float*, int, const float*);
 
 static double agora() { return chrono::duration<double>(Clock::now().time_since_epoch()).count(); }
 
+static int iteracao_atual() {
+    const char* valor = getenv("ITERACAO");
+    if (valor == nullptr) return 1;
+
+    char* fim = nullptr;
+    long iteracao = strtol(valor, &fim, 10);
+    if (valor == fim || *fim != '\0' || iteracao < 1 || iteracao > INT_MAX) {
+        cerr << "Erro: ITERACAO deve ser um inteiro positivo." << endl;
+        exit(EXIT_FAILURE);
+    }
+    return static_cast<int>(iteracao);
+}
+
+static string nome_arquivo_csv(const string& algoritmo, int iteracao) {
+    return "csv_time/" + algoritmo + "_I" + to_string(iteracao) + ".csv";
+}
+
 static float maxdiff(const float* a, const float* b, size_t n) {
     float d = 0; for (size_t k = 0; k < n; k++) d = max(d, fabsf(a[k] - b[k])); return d;
 }
 
-static void testar(const char* nome, Func f, const float* in, float* out, int N, ofstream& log) {
+static void testar(const char* nome, Func f, const float* in, float* out, int N, int iteracao, ofstream& log) {
     // 1. Matrizes para validação do OpenCV
     cv::Mat imagem_in(N, N, CV_32FC1, const_cast<float*>(in));
     cv::Mat imagem_out_opencv(N, N, CV_32FC1);
@@ -88,7 +119,7 @@ static void testar(const char* nome, Func f, const float* in, float* out, int N,
 
     // 5. Gravação da linha no arquivo CSV
     log.precision(6); log << fixed;
-    log << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif << "\n";
+    log << iteracao << ";" << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif << "\n";
 }
 
 #endif // COMMON_H

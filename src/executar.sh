@@ -5,11 +5,12 @@
 TAMANHOS=(1000 2000 3000)
 
 BLOCOS=(8 16 32 64)
+EXECUCOES=5
 
 echo "=================================================="
 echo "Removendo pastas de resultados e binários antigos..."
 echo "=================================================="
-rm -rf objects perfs csv_time relatorios_metricas *.bin
+rm -rf objects perfs csv_time *.bin
 
 echo "=================================================="
 echo "Criando novas pastas de diretórios..."
@@ -17,56 +18,12 @@ echo "=================================================="
 mkdir -p objects
 mkdir -p perfs
 mkdir -p csv_time
-mkdir -p relatorios_metrica
 
 echo "=================================================="
 echo "Compilando Utilitário de Geração de Matrizes..."
 echo "=================================================="
 
-# Cria um gerador temporário otimizado e paralelo para criar a matriz binária
-cat << 'EOF' > gerar_matriz.cpp
-#include <iostream>
-#include <vector>
-#include <random>
-#include <fstream>
-#include <cstdlib>
-#include <omp.h>
-
-using namespace std;
-
-int main(int argc, char** argv) {
-    int N = (argc > 1) ? atoi(argv[1]) : 1024;
-    string filename = "matriz_in_N" + to_string(N) + ".bin";
-    size_t total_elementos = (size_t)N * N;
-    
-    vector<float> in(total_elementos);
-    
-    #pragma omp parallel
-    {
-        int tid = omp_get_thread_num();
-        int nthreads = omp_get_num_threads();
-        size_t chunk_size = total_elementos / nthreads;
-        size_t start = tid * chunk_size;
-        size_t end = (tid == nthreads - 1) ? total_elementos : start + chunk_size;
-
-        mt19937 gen(42);
-        gen.discard(start);
-        uniform_real_distribution<float> dis(0.0f, 255.0f);
-
-        for (size_t k = start; k < end; k++) {
-            in[k] = dis(gen);
-        }
-    }
-
-    ofstream file(filename, ios::binary);
-    file.write(reinterpret_cast<char*>(in.data()), total_elementos * sizeof(float));
-    file.close();
-    return 0;
-}
-EOF
-
 g++ -O3 -fopenmp gerar_matriz.cpp -o objects/gerar_matriz
-rm -f gerar_matriz.cpp
 
 echo "=================================================="
 echo "Iniciando Compilação de Todos os Programas..."
@@ -98,34 +55,38 @@ for N in "${TAMANHOS[@]}"; do
     echo ==================================================
     echo "--- Testando Tamanho N = $N ---"
     echo ==================================================
-    
-    # 1A. Conv Linhas
-    perf stat -o "perfs/1A_conv_linhas_N${N}.txt" -e "$PERF_EVENTS" ./objects/1A_conv_linhas "$N"
-    sleep 1
 
-    # 1B. Conv Colunas
-    perf stat -o "perfs/1B_conv_colunas_N${N}.txt" -e "$PERF_EVENTS" ./objects/1B_conv_colunas "$N"
-    sleep 1
+    for ((I = 1; I <= EXECUCOES; I++)); do
+        echo "--- Iteração $I/$EXECUCOES (N=$N) ---"
 
-    # 2. Conv SIMD
-    perf stat -o "perfs/2_conv_simd_N${N}.txt" -e "$PERF_EVENTS" ./objects/2_conv_simd "$N"
-    sleep 1
+        # 1A. Conv Linhas
+        ITERACAO="$I" perf stat -o "perfs/1A_conv_linhas_N${N}_I${I}.txt" -e "$PERF_EVENTS" ./objects/1A_conv_linhas "$N"
+        sleep 1
 
-    # 3A. Conv Blocos (Scalar)
-    for B in "${BLOCOS[@]}"; do
-        perf stat -o "perfs/3A_conv_blocos_N${N}_B${B}.txt" -e "$PERF_EVENTS" ./objects/3A_conv_blocos "$N" "$B"
+        # 1B. Conv Colunas
+        ITERACAO="$I" perf stat -o "perfs/1B_conv_colunas_N${N}_I${I}.txt" -e "$PERF_EVENTS" ./objects/1B_conv_colunas "$N"
+        sleep 1
+
+        # 2. Conv SIMD
+        ITERACAO="$I" perf stat -o "perfs/2_conv_simd_N${N}_I${I}.txt" -e "$PERF_EVENTS" ./objects/2_conv_simd "$N"
+        sleep 1
+
+        # 3A. Conv Blocos (Scalar)
+        for B in "${BLOCOS[@]}"; do
+            ITERACAO="$I" perf stat -o "perfs/3A_conv_blocos_N${N}_B${B}_I${I}.txt" -e "$PERF_EVENTS" ./objects/3A_conv_blocos "$N" "$B"
+            sleep 1
+        done
+
+        # 3B. Conv Blocos (Vectorized)
+        for B in "${BLOCOS[@]}"; do
+            ITERACAO="$I" perf stat -o "perfs/3B_conv_blocos_N${N}_B${B}_I${I}.txt" -e "$PERF_EVENTS" ./objects/3B_conv_blocos "$N" "$B"
+            sleep 1
+        done
+
+        # 4. OpenCV Baseline
+        ITERACAO="$I" perf stat -o "perfs/4_conv_opencv_N${N}_I${I}.txt" -e "$PERF_EVENTS" ./objects/4_conv_opencv "$N"
         sleep 1
     done
-
-    # 3B. Conv Blocos (Vectorized)
-    for B in "${BLOCOS[@]}"; do
-        perf stat -o "perfs/3B_conv_blocos_N${N}_B${B}.txt" -e "$PERF_EVENTS" ./objects/3B_conv_blocos "$N" "$B"
-        sleep 1
-    done
-
-    # 4. OpenCV Baseline
-    perf stat -o "perfs/4_conv_opencv_N${N}.txt" -e "$PERF_EVENTS" ./objects/4_conv_opencv "$N"
-    sleep 1
 done
 
 # Opcional: limpa os arquivos binários gigantes ao finalizar para não ocupar espaço em disco
