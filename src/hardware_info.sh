@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Nome do arquivo de saída
-ARQ_SAIDA="perfs/hardware_info.txt"
+ARQ_SAIDA="hardware_info.txt"
 
 # Garante que a pasta perfs existe
 mkdir -p perfs
