@@ -4,8 +4,10 @@
 #pragma GCC optimize ("O0")
 __attribute__((optimize("O0", "no-tree-vectorize")))
 NOVEC void conv_colunas(const float* in, float* out, int N, const float* m) {
-    for (int j = 1; j < N - 1; j++)
-        for (int i = 1; i < N - 1; i++)
+    int i, j;
+    #pragma omp parallel for default(none) shared(in, out, N, m) private(i, j)
+    for (j = 1; j < N - 1; j++)
+        for (i = 1; i < N - 1; i++)
             out[(size_t)i * N + j] = STENCIL(in, N, i, j, m);
     bordas(in, out, N, m);
 }
@@ -30,7 +32,7 @@ int main(int argc, char** argv) {
 
     // Escreve o cabeçalho SOMENTE se o arquivo for novo/vazio
     if (!arquivo_existe) {
-        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
+        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv;threads\n";
     }
 
     for (int N : tams) {

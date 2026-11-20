@@ -13,6 +13,7 @@
 #include <string>
 #include <climits>
 #include <cstring>
+#include <omp.h>
 
 // Cabeçalhos do OpenCV
 #include <opencv2/opencv.hpp>
@@ -56,9 +57,12 @@ static void bordas(const float* in, float* out, int N, const float* m) {
 
 template <typename TipoBloco>
 static void montar_saida_blocos(const vector<TipoBloco>& blocos, float* out, int N) {
-    for (size_t k = 0; k < blocos.size(); k++) {
+    size_t k;
+    int li;
+    #pragma omp parallel for default(none) shared(blocos, out, N) private(k, li)
+    for (k = 0; k < blocos.size(); k++) {
         const TipoBloco& b = blocos[k];
-        for (int li = 0; li < b.h; li++) {
+        for (li = 0; li < b.h; li++) {
             memcpy(out + (size_t)(b.bi + li) * N + b.bj,
                    &b.sai[(size_t)li * b.w],
                    (size_t)b.w * sizeof(float));
@@ -89,7 +93,12 @@ static int iteracao_atual() {
 }
 
 static string nome_arquivo_csv(const string& algoritmo, int iteracao) {
-    return "csv_time/" + algoritmo + "_I" + to_string(iteracao) + ".csv";
+    return "csv_time/" + algoritmo + "_I" + to_string(iteracao) +
+           "_T" + to_string(omp_get_max_threads()) + ".csv";
+}
+
+static int threads_configurados() {
+    return omp_get_max_threads();
 }
 
 static float maxdiff(const float* a, const float* b, size_t n) {
@@ -119,7 +128,8 @@ static void testar(const char* nome, Func f, const float* in, float* out, int N,
 
     // 5. Gravação da linha no arquivo CSV
     log.precision(6); log << fixed;
-    log << iteracao << ";" << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif << "\n";
+    log << iteracao << ";" << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif
+        << ";" << threads_configurados() << "\n";
 }
 
 #endif // COMMON_H

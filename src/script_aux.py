@@ -109,13 +109,20 @@ resultados = {}
 
 for csv_path in csv_files:
     nome_arquivo = os.path.splitext(os.path.basename(csv_path))[0]
-    correspondencia_iteracao = re.fullmatch(r"(.*)_I(\d+)", nome_arquivo)
+    correspondencia_iteracao = re.fullmatch(r"(.*)_I(\d+)_T(\d+)", nome_arquivo)
     if correspondencia_iteracao:
         nome_algoritmo = correspondencia_iteracao.group(1)
         iteracao_arquivo = int(correspondencia_iteracao.group(2))
+        threads_arquivo = int(correspondencia_iteracao.group(3))
     else:
-        nome_algoritmo = nome_arquivo
-        iteracao_arquivo = 1
+        correspondencia_iteracao = re.fullmatch(r"(.*)_I(\d+)", nome_arquivo)
+        if correspondencia_iteracao:
+            nome_algoritmo = correspondencia_iteracao.group(1)
+            iteracao_arquivo = int(correspondencia_iteracao.group(2))
+        else:
+            nome_algoritmo = nome_arquivo
+            iteracao_arquivo = 1
+        threads_arquivo = None
 
     df_tempo = pd.read_csv(csv_path, sep=';')
 
@@ -124,6 +131,7 @@ for csv_path in csv_files:
 
     for _, row in df_tempo.iterrows():
         iteracao = int(row['iteracao']) if 'iteracao' in df_tempo.columns and pd.notna(row['iteracao']) else iteracao_arquivo
+        threads = int(row['threads']) if 'threads' in df_tempo.columns and pd.notna(row['threads']) else threads_arquivo
         N = int(row['N'])
         bloco = int(row['bloco']) if 'bloco' in df_tempo.columns else None
 
@@ -144,9 +152,12 @@ for csv_path in csv_files:
             tempo_s = float(row['tempo_s'])
 
         perf_base = f"{nome_algoritmo}_N{N}_B{bloco}" if bloco is not None else f"{nome_algoritmo}_N{N}"
-        perf_path_iteracao = os.path.join("perfs", f"{perf_base}_I{iteracao}.txt")
-        perf_path_legado = os.path.join("perfs", f"{perf_base}.txt")
-        perf_path = perf_path_iteracao if os.path.exists(perf_path_iteracao) else perf_path_legado
+        if threads is not None:
+            perf_path = os.path.join("perfs", f"{perf_base}_I{iteracao}_T{threads}.txt")
+        else:
+            perf_path_iteracao = os.path.join("perfs", f"{perf_base}_I{iteracao}.txt")
+            perf_path_legado = os.path.join("perfs", f"{perf_base}.txt")
+            perf_path = perf_path_iteracao if os.path.exists(perf_path_iteracao) else perf_path_legado
         perf_data = extrair_perf_stats(perf_path)
 
         total_pixels = (N - 2) * (N - 2)
@@ -154,7 +165,7 @@ for csv_path in csv_files:
         mflops = seguro_div(total_flops / 1e6, tempo_s)
         cpi = seguro_div(perf_data['cycles'], perf_data['instructions'])
 
-        cenario_nome = f"{nome_algoritmo} (N={N}{f', B={bloco}' if bloco else ''})"
+        cenario_nome = f"{nome_algoritmo} (N={N}{f', B={bloco}' if bloco else ''}{f', threads={threads}' if threads is not None else ''})"
 
         # Energia do stencil (ou do intervalo único, no formato antigo)
         potencia_media, energia_total = calcular_energia_intervalo(t_ini_ref, t_fim_ref, cenario_nome + " [stencil]")
@@ -201,18 +212,22 @@ for csv_path in csv_files:
                 'mflops_por_joule_total': mflops_por_joule_tot,
             })
 
-        chave = (nome_algoritmo, N, bloco)
+        chave = (nome_algoritmo, N, bloco, threads)
         resultados.setdefault(chave, []).append(metricas)
 
-for (nome_algoritmo, N, bloco), execucoes in resultados.items():
+for (nome_algoritmo, N, bloco, threads), execucoes in resultados.items():
     metricas = {
         nome: float(np.mean([execucao[nome] for execucao in execucoes]))
         for nome in execucoes[0]
     }
     formato_novo = 'tempo_total' in metricas
 
-    rel_nome = f"relatorios_metricas/{nome_algoritmo}_N{N}_B{bloco}.txt" if bloco is not None else f"relatorios_metricas/{nome_algoritmo}_N{N}.txt"
+    sufixo_bloco = f"_B{bloco}" if bloco is not None else ""
+    sufixo_threads = f"_T{threads}" if threads is not None else ""
+    rel_nome = f"relatorios_metricas/{nome_algoritmo}_N{N}{sufixo_bloco}{sufixo_threads}.txt"
     cenario_str = f"Algoritmo: {nome_algoritmo} | N = {N}" + (f" | Bloco = {bloco}" if bloco is not None else "")
+    if threads is not None:
+        cenario_str += f" | Threads = {threads}"
 
     with open(rel_nome, "w", encoding="utf-8") as rel:
         rel.write("==================================================\n")

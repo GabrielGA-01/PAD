@@ -1,0 +1,20 @@
+# started on Thu Nov 19 20:40:48 2026
+
+
+ Performance counter stats for './objects/4_conv_opencv 2000':
+
+          26048222      cycles:u                                                                (51.42%)
+          38279820      instructions:u                                                          (67.59%)
+          22472843      l1-dcache-loads:u                                                       (69.70%)
+           2077738      l1-dcache-load-misses:u                                                 (77.88%)
+            503428      l2_rqsts.all_demand_data_rd:u                                           (84.32%)
+            169322      l2_rqsts.all_demand_miss:u                                              (84.26%)
+              2805      mem_load_retired.l3_hit:u                                               (45.98%)
+              6345      mem_load_retired.l3_miss:u                                              (37.87%)
+
+       1.051374908 seconds time elapsed
+
+       0.019707000 seconds user
+       0.027589000 seconds sys
+
+

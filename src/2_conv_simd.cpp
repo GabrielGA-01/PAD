@@ -4,13 +4,15 @@ VEC void conv_simd(const float* __restrict in_, float* __restrict out_, int N, c
     const float* in  = (const float*)__builtin_assume_aligned(in_, 64);
     float*       out = (float*)__builtin_assume_aligned(out_, 64);
     const float m0=m_[0],m1=m_[1],m2=m_[2],m3=m_[3],m4=m_[4],m5=m_[5],m6=m_[6],m7=m_[7],m8=m_[8];
-    for (int i = 1; i < N - 1; i++) {
+    int i, j;
+    #pragma omp parallel for default(none) shared(in, out, N, m0, m1, m2, m3, m4, m5, m6, m7, m8) private(i, j)
+    for (i = 1; i < N - 1; i++) {
         const float* a = in + (size_t)(i - 1) * N;
         const float* b = in + (size_t)i * N;
         const float* c = in + (size_t)(i + 1) * N;
         float* o = out + (size_t)i * N;
         #pragma omp simd
-        for (int j = 1; j < N - 1; j++)
+        for (j = 1; j < N - 1; j++)
             o[j] = m0*a[j-1] + m1*a[j] + m2*a[j+1]
                  + m3*b[j-1] + m4*b[j] + m5*b[j+1]
                  + m6*c[j-1] + m7*c[j] + m8*c[j+1];
@@ -37,7 +39,7 @@ int main(int argc, char** argv) {
 
     // Escreve o cabeçalho SOMENTE se o arquivo for novo/vazio
     if (!arquivo_existe) {
-        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
+        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv;threads\n";
     }
 
     for (int N : tams) {

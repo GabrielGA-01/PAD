@@ -11,26 +11,30 @@ struct Bloco {
 
 // ---- Divisão da matriz em blocos (FORA da medição de tempo) ----
 std::vector<Bloco> dividir_blocos(const float* in, int N, int BLOCK_SIZE) {
-    std::vector<Bloco> blocos;
-    for (int bi = 1; bi < N - 1; bi += BLOCK_SIZE) {
-        for (int bj = 1; bj < N - 1; bj += BLOCK_SIZE) {
-            Bloco b;
-            b.bi = bi;
-            b.bj = bj;
-            b.h = std::min(bi + BLOCK_SIZE, N - 1) - bi;
-            b.w = std::min(bj + BLOCK_SIZE, N - 1) - bj;
-            int W = b.w + 2;
-            b.ent.assign((size_t)(b.h + 2) * W, 0.0f);
-            b.sai.assign((size_t)b.h * b.w, 0.0f);
+    const size_t blocos_por_eixo = (N - 2 + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    const size_t total_blocos = blocos_por_eixo * blocos_por_eixo;
+    std::vector<Bloco> blocos(total_blocos);
 
-            // copia bloco + halo (linhas bi-1..bi+h, colunas bj-1..bj+w)
-            for (int li = 0; li < b.h + 2; li++) {
-                for (int lj = 0; lj < W; lj++) {
-                    b.ent[(size_t)li * W + lj] =
-                        in[(size_t)(bi - 1 + li) * N + (bj - 1 + lj)];
-                }
+    size_t indice;
+    #pragma omp parallel for default(none) shared(in, N, BLOCK_SIZE, blocos, blocos_por_eixo, total_blocos) private(indice)
+    for (indice = 0; indice < total_blocos; indice++) {
+        const int bi = 1 + (indice / blocos_por_eixo) * BLOCK_SIZE;
+        const int bj = 1 + (indice % blocos_por_eixo) * BLOCK_SIZE;
+        Bloco& b = blocos[indice];
+        b.bi = bi;
+        b.bj = bj;
+        b.h = std::min(bi + BLOCK_SIZE, N - 1) - bi;
+        b.w = std::min(bj + BLOCK_SIZE, N - 1) - bj;
+        int W = b.w + 2;
+        b.ent.assign((size_t)(b.h + 2) * W, 0.0f);
+        b.sai.assign((size_t)b.h * b.w, 0.0f);
+
+        // copia bloco + halo (linhas bi-1..bi+h, colunas bj-1..bj+w)
+        for (int li = 0; li < b.h + 2; li++) {
+            for (int lj = 0; lj < W; lj++) {
+                b.ent[(size_t)li * W + lj] =
+                    in[(size_t)(bi - 1 + li) * N + (bj - 1 + lj)];
             }
-            blocos.push_back(std::move(b));
         }
     }
     return blocos;
@@ -42,11 +46,14 @@ std::vector<Bloco> dividir_blocos(const float* in, int N, int BLOCK_SIZE) {
 __attribute__((optimize("O0", "no-tree-vectorize")))
 NOVEC void conv_blocos(std::vector<Bloco>& blocos, const float* in, float* out,
                        int N, const float* m) {
-    for (size_t k = 0; k < blocos.size(); k++) {
+    size_t k;
+    int li, lj;
+    #pragma omp parallel for default(none) shared(blocos, in, out, N, m) private(k, li, lj)
+    for (k = 0; k < blocos.size(); k++) {
         Bloco& b = blocos[k];
         int W = b.w + 2;
-        for (int li = 1; li <= b.h; li++) {
-            for (int lj = 1; lj <= b.w; lj++) {
+        for (li = 1; li <= b.h; li++) {
+            for (lj = 1; lj <= b.w; lj++) {
                 b.sai[(size_t)(li - 1) * b.w + (lj - 1)] =
                     STENCIL(b.ent.data(), W, li, lj, m);
             }
@@ -70,7 +77,7 @@ int main(int argc, char** argv) {
     if (!arquivo_existe) {
         log << "iteracao;N;bloco;t0_epoch;t1_epoch;t2_epoch;t3_epoch;"
                "tempo_divisao_s;tempo_stencil_s;tempo_juncao_s;tempo_total_s;"
-               "maxdiff_vs_opencv\n";
+               "maxdiff_vs_opencv;threads\n";
     }
 
     size_t bytes = ((size_t)N * N * sizeof(float) + 63) / 64 * 64;
@@ -120,7 +127,7 @@ int main(int argc, char** argv) {
     log << iteracao << ";" << N << ";" << B << ";"
         << t0 << ";" << t1 << ";" << t2 << ";" << t3 << ";"
         << t_divisao << ";" << t_stencil << ";" << t_juncao << ";" << t_total << ";"
-        << dif << "\n";
+        << dif << ";" << threads_configurados() << "\n";
 
     free(in); free(out);
     return 0;

@@ -1,6 +1,7 @@
 #include "common.h"
 
 int main(int argc, char** argv) {
+    cv::setNumThreads(threads_configurados());
     int iteracao = iteracao_atual();
     vector<int> tams;
     for (int a = 1; a < argc; a++) tams.push_back(atoi(argv[a]));
@@ -16,7 +17,7 @@ int main(int argc, char** argv) {
     // Abre em modo append para acumular os resultados
     ofstream log(caminho_csv, ios::app);
     if (!arquivo_existe) {
-        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv\n";
+        log << "iteracao;N;inicio_epoch;fim_epoch;tempo_s;maxdiff_vs_opencv;threads\n";
     }
 
     for (int N : tams) {
@@ -50,7 +51,8 @@ int main(int argc, char** argv) {
 
         printf("opencv N=%-5d tempo=%.6f s  maxdiff_vs_opencv=%g\n", N, t, dif);
         log.precision(6); log << fixed;
-        log << iteracao << ";" << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif << "\n";
+        log << iteracao << ";" << N << ";" << t0 << ";" << t1 << ";" << t << ";" << dif
+            << ";" << threads_configurados() << "\n";
 
         free(in); free(out);
     }

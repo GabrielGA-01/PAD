@@ -19,25 +19,29 @@ static float* alocar_alinhado(size_t n_floats) {
 
 // ---- Divisão da matriz em blocos ----
 std::vector<Bloco> dividir_blocos(const float* in, int N, int BLOCK_SIZE) {
-    std::vector<Bloco> blocos;
-    for (int bi = 1; bi < N - 1; bi += BLOCK_SIZE) {
-        for (int bj = 1; bj < N - 1; bj += BLOCK_SIZE) {
-            Bloco b;
-            b.bi = bi;
-            b.bj = bj;
-            b.h = std::min(bi + BLOCK_SIZE, N - 1) - bi;
-            b.w = std::min(bj + BLOCK_SIZE, N - 1) - bj;
-            int W = b.w + 2;
-            b.ent = alocar_alinhado((size_t)(b.h + 2) * W);
-            b.sai = alocar_alinhado((size_t)b.h * b.w);
+    const size_t blocos_por_eixo = (N - 2 + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    const size_t total_blocos = blocos_por_eixo * blocos_por_eixo;
+    std::vector<Bloco> blocos(total_blocos);
 
-            // copia bloco + halo (linhas bi-1..bi+h, colunas bj-1..bj+w)
-            for (int li = 0; li < b.h + 2; li++) {
-                memcpy(b.ent + (size_t)li * W,
-                       in + (size_t)(bi - 1 + li) * N + (bj - 1),
-                       (size_t)W * sizeof(float));
-            }
-            blocos.push_back(b);
+    size_t indice;
+    #pragma omp parallel for default(none) shared(in, N, BLOCK_SIZE, blocos, blocos_por_eixo, total_blocos) private(indice)
+    for (indice = 0; indice < total_blocos; indice++) {
+        const int bi = 1 + (indice / blocos_por_eixo) * BLOCK_SIZE;
+        const int bj = 1 + (indice % blocos_por_eixo) * BLOCK_SIZE;
+        Bloco& b = blocos[indice];
+        b.bi = bi;
+        b.bj = bj;
+        b.h = std::min(bi + BLOCK_SIZE, N - 1) - bi;
+        b.w = std::min(bj + BLOCK_SIZE, N - 1) - bj;
+        int W = b.w + 2;
+        b.ent = alocar_alinhado((size_t)(b.h + 2) * W);
+        b.sai = alocar_alinhado((size_t)b.h * b.w);
+
+        // copia bloco + halo (linhas bi-1..bi+h, colunas bj-1..bj+w)
+        for (int li = 0; li < b.h + 2; li++) {
+            memcpy(b.ent + (size_t)li * W,
+                   in + (size_t)(bi - 1 + li) * N + (bj - 1),
+                   (size_t)W * sizeof(float));
         }
     }
     return blocos;
@@ -50,21 +54,24 @@ VEC void conv_blocos_vec(const Bloco* blocos, size_t nb,
                 m3=m_[3], m4=m_[4], m5=m_[5],
                 m6=m_[6], m7=m_[7], m8=m_[8];
 
-    for (size_t k = 0; k < nb; k++) {
+    size_t k;
+    int i, j;
+    #pragma omp parallel for default(none) shared(blocos, nb, in_, out_, N, m0, m1, m2, m3, m4, m5, m6, m7, m8) private(k, i, j)
+    for (k = 0; k < nb; k++) {
         const Bloco& blk = blocos[k];
         const int h = blk.h, w = blk.w, W = w + 2;
 
         const float* __restrict ent = (const float*)__builtin_assume_aligned(blk.ent, 64);
         float*       __restrict sai = (float*)__builtin_assume_aligned(blk.sai, 64);
 
-        for (int i = 0; i < h; i++) {
+        for (i = 0; i < h; i++) {
             const float* a = ent + (size_t)i * W;        // linha acima
             const float* b = ent + (size_t)(i + 1) * W;  // linha atual
             const float* c = ent + (size_t)(i + 2) * W;  // linha abaixo
             float* o = sai + (size_t)i * w;
 
             #pragma omp simd
-            for (int j = 0; j < w; j++) {
+            for (j = 0; j < w; j++) {
                 o[j] = m0*a[j] + m1*a[j+1] + m2*a[j+2]
                      + m3*b[j] + m4*b[j+1] + m5*b[j+2]
                      + m6*c[j] + m7*c[j+1] + m8*c[j+2];
@@ -97,7 +104,7 @@ int main(int argc, char** argv) {
     if (!arquivo_existe) {
         log << "iteracao;N;bloco;t0_epoch;t1_epoch;t2_epoch;t3_epoch;"
                "tempo_divisao_s;tempo_stencil_s;tempo_juncao_s;tempo_total_s;"
-               "maxdiff_vs_opencv\n";
+               "maxdiff_vs_opencv;threads\n";
     }
 
     size_t bytes = ((size_t)N * N * sizeof(float) + 63) / 64 * 64;
@@ -147,7 +154,7 @@ int main(int argc, char** argv) {
     log << iteracao << ";" << N << ";" << B << ";"
         << t0 << ";" << t1 << ";" << t2 << ";" << t3 << ";"
         << t_divisao << ";" << t_stencil << ";" << t_juncao << ";" << t_total << ";"
-        << dif << "\n";
+        << dif << ";" << threads_configurados() << "\n";
 
     liberar_blocos(blocos);
     free(in); free(out);
