@@ -1,0 +1,34 @@
+==================================================
+        RELATÓRIO DE DESEMPENHO E ENERGIA         
+==================================================
+Algoritmo: 3B_conv_blocos | N = 19456 | Bloco = 64 | Threads = 2
+Execuções consideradas na média: 3
+
+--- 1. DESEMPENHO TEMPORAL E COMPUTACIONAL ---
+Tempo da Divisão em Blocos: 1.884971 s
+Tempo da Aplicação do Stencil: 0.444830 s
+Tempo da Junção da Matriz: 1.136626 s
+Tempo Total (Wall-Clock): 3.466427 s
+Desempenho Computacional (só stencil): 15910.27 MFLOPS
+Desempenho Computacional (total): 2009.58 MFLOPS
+CPI (Cycles Per Instruction): 1.4475
+
+--- 2. HARDWARE E HIERARQUIA DE CACHE (perf) ---
+Ciclos de CPU (Cycles): 8874239063.33
+Instruções Executadas (Instructions): 6130432034.00
+L1 Data Cache Misses: 352475526.67
+L2 Cache Misses: 60464400.00
+L3 Cache Misses: 12788044.67
+
+--- 3. CONSUMO DE ENERGIA (HWiNFO64) ---
+[Stencil]  Potência Média: 17.46 W | Energia: 4.4011 J
+[Divisão]  Potência Média: 19.66 W | Energia: 31.1274 J
+[Junção]   Potência Média: 17.71 W | Energia: 16.4685 J
+[Total]    Potência Média: 18.45 W | Energia: 60.5901 J
+
+--- 4. EFICIÊNCIA ENERGÉTICA ---
+Stencil - MFLOPS/Watt: 918.1712
+Stencil - MFLOPS/Joule: 3645.7302
+Total   - MFLOPS/Watt: 108.9171
+Total   - MFLOPS/Joule: 34.5894
+==================================================

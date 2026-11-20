@@ -1,0 +1,20 @@
+# started on Fri Nov 20 13:15:42 2026
+
+
+ Performance counter stats for './objects/2_conv_simd 17408':
+
+        8395480147      cycles:u                                                                (62.53%)
+        5216214776      instructions:u                                                          (74.67%)
+        1959809834      l1-dcache-loads:u                                                       (74.65%)
+         201308056      l1-dcache-load-misses:u                                                 (74.70%)
+          27168953      l2_rqsts.all_demand_data_rd:u                                           (75.12%)
+          20126630      l2_rqsts.all_demand_miss:u                                              (75.57%)
+            363077      mem_load_retired.l3_hit:u                                               (50.33%)
+            245165      mem_load_retired.l3_miss:u                                              (50.28%)
+
+       4.461862268 seconds time elapsed
+
+       3.101792000 seconds user
+       2.985123000 seconds sys
+
+

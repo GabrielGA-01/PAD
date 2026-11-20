@@ -1,0 +1,20 @@
+# started on Fri Nov 20 12:53:56 2026
+
+
+ Performance counter stats for './objects/1A_conv_linhas 17408':
+
+        7609319153      cycles:u                                                                (63.22%)
+       13330592148      instructions:u                                                          (75.40%)
+        6920933252      l1-dcache-loads:u                                                       (75.35%)
+         195937100      l1-dcache-load-misses:u                                                 (75.14%)
+          26910380      l2_rqsts.all_demand_data_rd:u                                           (74.77%)
+          21283299      l2_rqsts.all_demand_miss:u                                              (74.45%)
+            410863      mem_load_retired.l3_hit:u                                               (49.88%)
+            298263      mem_load_retired.l3_miss:u                                              (50.49%)
+
+       6.553685381 seconds time elapsed
+
+       3.478004000 seconds user
+       2.965930000 seconds sys
+
+

@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Configurações de tamanhos massivos e blocos
-# TAMANHOS=(26500 24576 23552)
-TAMANHOS=(1000 2000)
+TAMANHOS=(19456 18432 17408)
+# TAMANHOS=(1000 2000)
 
 BLOCOS=(8 16 32 64)
-EXECUCOES=5
-THREAD_COUNTS=(1 2)
+EXECUCOES=3
+THREAD_COUNTS=(1 2 4 8)
 
 export OMP_DYNAMIC=FALSE
 
@@ -63,6 +63,17 @@ for N in "${TAMANHOS[@]}"; do
         for THREADS in "${THREAD_COUNTS[@]}"; do
             export OMP_NUM_THREADS="$THREADS"
             echo "--- Iteração $I/$EXECUCOES (N=$N, threads=$THREADS) ---"
+            # 3A. Conv Blocos (Scalar)
+            for B in "${BLOCOS[@]}"; do
+                ITERACAO="$I" perf stat -o "perfs/3A_conv_blocos_N${N}_B${B}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/3A_conv_blocos "$N" "$B"
+                sleep 1
+            done
+
+            # 3B. Conv Blocos (Vectorized)
+            for B in "${BLOCOS[@]}"; do
+                ITERACAO="$I" perf stat -o "perfs/3B_conv_blocos_N${N}_B${B}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/3B_conv_blocos "$N" "$B"
+                sleep 1
+            done
 
             # 1A. Conv Linhas
             ITERACAO="$I" perf stat -o "perfs/1A_conv_linhas_N${N}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/1A_conv_linhas "$N"
@@ -76,17 +87,6 @@ for N in "${TAMANHOS[@]}"; do
             ITERACAO="$I" perf stat -o "perfs/2_conv_simd_N${N}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/2_conv_simd "$N"
             sleep 1
 
-            # 3A. Conv Blocos (Scalar)
-            for B in "${BLOCOS[@]}"; do
-                ITERACAO="$I" perf stat -o "perfs/3A_conv_blocos_N${N}_B${B}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/3A_conv_blocos "$N" "$B"
-                sleep 1
-            done
-
-            # 3B. Conv Blocos (Vectorized)
-            for B in "${BLOCOS[@]}"; do
-                ITERACAO="$I" perf stat -o "perfs/3B_conv_blocos_N${N}_B${B}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/3B_conv_blocos "$N" "$B"
-                sleep 1
-            done
 
             # 4. OpenCV Baseline
             ITERACAO="$I" perf stat -o "perfs/4_conv_opencv_N${N}_I${I}_T${THREADS}.txt" -e "$PERF_EVENTS" ./objects/4_conv_opencv "$N"

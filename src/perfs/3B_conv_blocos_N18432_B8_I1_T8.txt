@@ -1,0 +1,20 @@
+# started on Fri Nov 20 12:23:16 2026
+
+
+ Performance counter stats for './objects/3B_conv_blocos 18432 8':
+
+       23262620165      cycles:u                                                                (62.72%)
+       18248787680      instructions:u                                                          (74.92%)
+        5504090514      l1-dcache-loads:u                                                       (74.58%)
+         439927201      l1-dcache-load-misses:u                                                 (74.84%)
+         136317584      l2_rqsts.all_demand_data_rd:u                                           (75.15%)
+          74632768      l2_rqsts.all_demand_miss:u                                              (74.97%)
+           7053258      mem_load_retired.l3_hit:u                                               (50.27%)
+          19906323      mem_load_retired.l3_miss:u                                              (50.21%)
+
+      44.668683425 seconds time elapsed
+
+      11.542123000 seconds user
+      37.383298000 seconds sys
+
+

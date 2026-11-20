@@ -1,0 +1,20 @@
+# started on Fri Nov 20 13:15:21 2026
+
+
+ Performance counter stats for './objects/1B_conv_colunas 17408':
+
+      200025966241      cycles:u                                                                (62.44%)
+       13895650677      instructions:u                                                          (74.85%)
+        7047343958      l1-dcache-loads:u                                                       (75.01%)
+        2119718928      l1-dcache-load-misses:u                                                 (75.01%)
+        1310876201      l2_rqsts.all_demand_data_rd:u                                           (74.92%)
+        1071381107      l2_rqsts.all_demand_miss:u                                              (74.94%)
+            554650      mem_load_retired.l3_hit:u                                               (50.08%)
+         301529668      mem_load_retired.l3_miss:u                                              (50.08%)
+
+      19.792323237 seconds time elapsed
+
+     111.798762000 seconds user
+       5.853488000 seconds sys
+
+

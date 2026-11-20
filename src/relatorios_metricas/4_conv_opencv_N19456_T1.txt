@@ -1,0 +1,26 @@
+==================================================
+        RELATÓRIO DE DESEMPENHO E ENERGIA         
+==================================================
+Algoritmo: 4_conv_opencv | N = 19456 | Threads = 1
+Execuções consideradas na média: 3
+
+--- 1. DESEMPENHO TEMPORAL E COMPUTACIONAL ---
+Tempo de Execução (Wall-Clock): 1.405235 s
+Desempenho Computacional: 4916.74 MFLOPS
+CPI (Cycles Per Instruction): 0.7061
+
+--- 2. HARDWARE E HIERARQUIA DE CACHE (perf) ---
+Ciclos de CPU (Cycles): 2941963548.33
+Instruções Executadas (Instructions): 4166884211.00
+L1 Data Cache Misses: 145222025.67
+L2 Cache Misses: 25906236.00
+L3 Cache Misses: 175711.00
+
+--- 3. CONSUMO DE ENERGIA (HWiNFO64) ---
+Potência Média Consumida: 24.74 W
+Energia Total Consumida (CPU Package): 29.2728 Joules
+
+--- 4. EFICIÊNCIA ENERGÉTICA ---
+Eficiência por Potência (MFLOPS/Watt): 201.5468
+Eficiência por Energia (MFLOPS/Joule): 181.8734
+==================================================
